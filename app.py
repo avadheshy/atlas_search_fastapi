@@ -17,27 +17,27 @@ PAGE_SIZE = 20
 @app.get("/find")
 def find_products(search_term:str):
     result=DB["products"].aggregate([
-      { '$search': {
-          'index': 'myindex',
-          'autocomplete': {
-            'query': search_term,
-            'path': "name",
-            'tokenOrder':'sequential',
-            'fuzzy':{}
-          },
-          'highlight': {
-            'path': [
-            'name'
-                    ]
-              }
-        }
-      },
+      {"$search": {
+        'index':'myindex',
+          'compound': {
+            'should': [
+              {'autocomplete': {
+                'query': search_term,
+                'path': "name",
+              }},
+              {'exists': {
+                'path': "manufacturer",
+                'score': {
+                  'boost': {
+                    'value': 5
+                  }
+                }
+              }}
+            ]
+          }
+      }},
       {'$project':{
         '_id':0,
-        'name': 1, 
-        'highlights': {
-        '$meta': 'searchHighlights'
-       }
        }
        },
       {'$limit':10}
