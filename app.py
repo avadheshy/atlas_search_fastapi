@@ -15,32 +15,39 @@ DB = CLIENT.SearchEngine
 PAGE_SIZE = 20
 
 @app.get("/find")
-def find_products(search_term:str):
+def find_products(name_term:str,manufacturer_term):
     result=DB["products"].aggregate([
       {"$search": {
         'index':'myindex',
           'compound': {
-            'should': [
-              {'autocomplete': {
-                'query': search_term,
+            'must': [
+              {'text': {
+                'query': name_term,
                 'path': "name",
+                 "score": {
+                  "boost": {
+                  "value": 5
+                 }
+             }
               }},
-              {'exists': {
+              {'text': {
+                'query': manufacturer_term,
                 'path': "manufacturer",
-                'score': {
-                  'boost': {
-                    'value': 5
-                  }
-                }
+                 "score": {
+                  "boost": {
+                  "value": 3
+               }
+             }
               }}
             ]
           }
       }},
       {'$project':{
-        '_id':0,
+        '_id':0
        }
        },
-      {'$limit':10}
+      {'$limit':20},
+
     ])
     return list(result)
 
