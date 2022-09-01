@@ -1,4 +1,4 @@
-#!/home/dell/Desktop/new_project/myenv/bin/python3
+#!/home/dell/Desktop/new_project/myenv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
