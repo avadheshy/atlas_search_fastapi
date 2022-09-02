@@ -1,5 +1,7 @@
+from calendar import day_abbr
 from multiprocessing import managers
 import os
+from io import StringIO
 from fastapi import FastAPI, Body, HTTPException, status, Query,File, UploadFile
 from fastapi.responses import Response, JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -8,7 +10,9 @@ from bson import ObjectId
 from typing import Optional, List
 from pymongo import MongoClient
 import time
-import os
+import csv
+from io import BytesIO
+import codecs
 
 
 app = FastAPI()
@@ -20,12 +24,12 @@ PAGE_SIZE = 20
 
 def get_boosting_stage(search_term):
     # data = DB['boosting_config'].find_one({"active": True},{'_id':1})
-    data = DB['product_booster'].find_one({}, {'_id': 0})
-
+    data = DB['product_booster'].find_one({'name':4}, {'_id': 0})
+    print(data)
     boosting_stage = []
     for key, value in data.items():
         payload = {
-            'text': {
+            'autocomplete': {
                 'query': search_term,
                 'path': key,
                 "score": {
@@ -35,6 +39,7 @@ def get_boosting_stage(search_term):
                 }}}
 
         boosting_stage.append(payload)
+    print(boosting_stage)
     return boosting_stage
 
 
@@ -58,7 +63,7 @@ def get_autocomplete_pipeline(search_term, skip, limit):
         {
             '$search': {
                 'index': 'myindex',
-                'text': {
+                'autocomplete': {
                     'path': 'name',
                     'query': search_term
                 }
@@ -81,9 +86,20 @@ def get_autocomplete_pipeline(search_term, skip, limit):
 
 
 @app.post('/boost')
-def add_booster(attribute_booster: dict):
+def add_booster(attribute_booster:dict):
     DB['product_booster'].insert_one(attribute_booster)
     return True
+# @app.post('/boost')
+# def add_booster(file: UploadFile = File(...)):
+#     csvReader = csv.DictReader(codecs.iterdecode(file.file, 'unicode_escape'))
+#     data = []
+#     for row in csvReader:
+#         data.append(row)
+
+#     file.file.close()
+#     DB['csv_booster'].insert_many(data)
+#     return True
+    
 
 
 @app.get("/search")
@@ -105,7 +121,7 @@ def product_search(search_term: str, page: str):
                     }},
                     {
                         '$project': {
-                            '_id': 0
+                            '_id': 0,
                         }},
                     {"$skip": skip},
                     {'$limit': PAGE_SIZE}
