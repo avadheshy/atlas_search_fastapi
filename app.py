@@ -116,11 +116,28 @@ def product_search(search_term: str, page: str):
     products = list(DB["products"].aggregate([
                     {"$search": {
                         'index': 'products',
-                        'text': {
+                        'compound':{
+                        'must':[
+                            {'text': {
                             'query': search_term,
                             'path':'name'
 
+                        }}
+                        ],
+                        'should':[
+                        {'text':{
+                            'query': "11",
+                            'path':'brand_id',
+                            'score':{'boost':{'value':6}}
+                        }},{'text':{
+                            'query': "3",
+                            'path':'brand_id',
+                            'score':{'boost':{'value':5}}
+                        }},
+                        ],
+                        "minimumShouldMatch": 0,
                         }
+                        
                     }},
                     {
                         '$project': {
