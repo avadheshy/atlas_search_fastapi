@@ -1,5 +1,6 @@
 from calendar import day_abbr
 from multiprocessing import managers
+from multiprocessing.sharedctypes import Value
 import os
 from io import StringIO
 from fastapi import FastAPI, Body, HTTPException, status, Query,File, UploadFile
@@ -20,8 +21,51 @@ CLIENT = MongoClient(
     'mongodb+srv://avadheshy2022:1997Avdy@cluster0.a2ic8ii.mongodb.net/test')
 DB = CLIENT.SearchEngine
 PAGE_SIZE = 20
+def abc(search_term):
+      # data = DB['boosting_config'].find_one({"active": True},{'_id':1})
+    data = DB['product_booster'].find_one({'name':4}, {'_id': 0})
+    print(data)
+    boosting_stage = []
+    # for key, value in data.items():
+    payload = {
+            'text': {
+                'query': search_term,
+                'path': 'name',
+                }}
 
-
+    boosting_stage.append(payload)
+    print(boosting_stage)
+    return boosting_stage
+    
+@app.get('/search_data')
+def search_data(search_term:str,page:int):
+    # boosting_data = get_boosting_stage(search_term)
+    user_id = 1
+    skip = (int(page) - 1) * PAGE_SIZE
+    products = list(DB["car_data"].aggregate([
+                    {"$search": {
+                        'index': 'carIndex',
+                        
+                        'text': {
+                                'query': search_term,
+                                'path': 'name',
+                                
+                        },
+                        'text':{
+                            'query': 'Petrol',
+                            'path': 'fuel',
+                            'score':{'boost':{'value':5}}
+                            }
+                    }},
+                    {
+                        '$project': {
+                            '_id': 0,
+                        }},
+                    {"$skip": skip},
+                    {'$limit': PAGE_SIZE}
+                    ]))
+    return products[:10]
+    
 def get_boosting_stage(search_term):
     # data = DB['boosting_config'].find_one({"active": True},{'_id':1})
     data = DB['product_booster'].find_one({'name':4}, {'_id': 0})
