@@ -19,7 +19,7 @@ import codecs
 app = FastAPI()
 CLIENT = MongoClient(
     'mongodb+srv://avadheshy2022:1997Avdy@cluster0.a2ic8ii.mongodb.net/test')
-DB = CLIENT.SearchEngine
+DB = CLIENT.products
 PAGE_SIZE = 20
 def abc(search_term):
       # data = DB['boosting_config'].find_one({"active": True},{'_id':1})
@@ -45,17 +45,30 @@ def search_data(search_term:str,page:int):
     products = list(DB["car_data"].aggregate([
                     {"$search": {
                         'index': 'carIndex',
-                        
-                        'text': {
+                        'compound':{
+                            'must':[
+                            {'text': {
                                 'query': search_term,
                                 'path': 'name',
+                                'synonyms':'mapping',
                                 
-                        },
-                        'text':{
-                            'query': 'Petrol',
-                            'path': 'fuel',
-                            'score':{'boost':{'value':5}}
-                            }
+                                }},
+                            ],
+                            'should':[
+                            {'text':{
+                                'query': 'Diesel',
+                                'path': 'fuel',
+                                'score':{'boost':{'value':6}}
+                                }},
+                            {'text':{
+                                'query': 'Petrol',
+                                'path': 'fuel',
+                                'score':{'boost':{'value':5}}
+                                }},
+                            ]
+                        }
+                        
+                    
                     }},
                     {
                         '$project': {
