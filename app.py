@@ -21,64 +21,8 @@ CLIENT = MongoClient(
     'mongodb+srv://avadheshy2022:1997Avdy@cluster0.a2ic8ii.mongodb.net/test')
 DB = CLIENT.products
 PAGE_SIZE = 20
-def abc(search_term):
-      # data = DB['boosting_config'].find_one({"active": True},{'_id':1})
-    data = DB['product_booster'].find_one({'name':4}, {'_id': 0})
-    print(data)
-    boosting_stage = []
-    # for key, value in data.items():
-    payload = {
-            'text': {
-                'query': search_term,
-                'path': 'name',
-                }}
 
-    boosting_stage.append(payload)
-    print(boosting_stage)
-    return boosting_stage
-    
-@app.get('/search_data')
-def search_data(search_term:str,page:int):
-    # boosting_data = get_boosting_stage(search_term)
-    user_id = 1
-    skip = (int(page) - 1) * PAGE_SIZE
-    products = list(DB["car_data"].aggregate([
-                    {"$search": {
-                        'index': 'carIndex',
-                        'compound':{
-                            'must':[
-                            {'text': {
-                                'query': search_term,
-                                'path': 'name',
-                                'synonyms':'mapping',
-                                
-                                }},
-                            ],
-                            'should':[
-                            {'text':{
-                                'query': 'Diesel',
-                                'path': 'fuel',
-                                'score':{'boost':{'value':6}}
-                                }},
-                            {'text':{
-                                'query': 'Petrol',
-                                'path': 'fuel',
-                                'score':{'boost':{'value':5}}
-                                }},
-                            ]
-                        }
-                        
-                    
-                    }},
-                    {
-                        '$project': {
-                            '_id': 0,
-                        }},
-                    {"$skip": skip},
-                    {'$limit': PAGE_SIZE}
-                    ]))
-    return products[:10]
-    
+
 def get_boosting_stage(search_term):
     # data = DB['boosting_config'].find_one({"active": True},{'_id':1})
     data = DB['product_booster'].find_one({'name':4}, {'_id': 0})
@@ -86,7 +30,7 @@ def get_boosting_stage(search_term):
     boosting_stage = []
     for key, value in data.items():
         payload = {
-            'autocomplete': {
+            'text': {
                 'query': search_term,
                 'path': key,
                 "score": {
@@ -119,7 +63,7 @@ def get_autocomplete_pipeline(search_term, skip, limit):
     return [
         {
             '$search': {
-                'index': 'myindex',
+                'index': 'default',
                 'autocomplete': {
                     'path': 'name',
                     'query': search_term
@@ -166,14 +110,16 @@ def product_search(search_term: str, page: str):
     """
     
     st = time.time()
-    boosting_data = get_boosting_stage(search_term)
+    # boosting_data = get_boosting_stage(search_term)
     user_id = 1
     skip = (int(page) - 1) * PAGE_SIZE
     products = list(DB["products"].aggregate([
                     {"$search": {
-                        'index': 'myindex',
-                        'compound': {
-                            'must': boosting_data
+                        'index': 'products',
+                        'text': {
+                            'query': search_term,
+                            'path':'name'
+
                         }
                     }},
                     {
@@ -199,46 +145,23 @@ def search_autocomplete(search_term: str, page: str):
     user_id = 1
     skip = (int(page) - 1) * PAGE_SIZE
     pipeline = get_autocomplete_pipeline(search_term, skip, PAGE_SIZE)
-    products = list(DB["products"].aggregate(pipeline))
+    products = list(DB["product_groups"].aggregate(pipeline))
     store_autocomplete_results(user_id, search_term, products)
     return products
 
 
 @app.get("/filter_category")
-def filter_product(name:Optional[str]=None,year:Optional[str]=None,fuel:Optional[str]=None,seats:Optional[str]=None,min_price:Optional[str]=None,max_price:Optional[str]=None):
+def filter_product(group_id:Optional[str]=None,brand_id:Optional[str]=None,):
     filter_query = {}
-    price_query={}
-    if name:
-        filter_query['name'] = name
-    if year:
-        filter_query['year'] = year
-    if fuel:
-        filter_query['fuel']=fuel
-    if seats:
-        filter_query['seats']=seats
-    if min_price:
-        price_query['$gte']= int(min_price)
-                
-    if max_price:
-        price_query['$lt']= int(max_price)
-    if len(price_query)>0:
-        filter_query['selling_price']=price_query
-    print(filter_query)
-    result = list(DB["car_data"].aggregate([
-        {"$project": {
-            "_id": 0,
-            "name": 1,
-            "year": 1,
-            "selling_price": 1,
-            "km_driven": 1,
-            "fuel": 1,
-            "seller_type": 1,
-            "transmission": 1,
-            "seats": 1,
-            "selling_price": {"$toInt": "$selling_price"}
-            }},
+    if group_id:
+        filter_query['group_id'] = group_id
+    if brand_id:
+        filter_query['brand_id']=brand_id
+            
+    result = list(DB["products"].aggregate([
+        
         {'$match':filter_query},
+        {"$project": {"_id": 0}},
         {'$limit': PAGE_SIZE}
-
-]))
+        ]))
     return result
